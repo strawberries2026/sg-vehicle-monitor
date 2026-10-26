@@ -25,7 +25,7 @@ try:
 except Exception as error:
     print("TrafficIncidents failed:", type(error).__name__, str(error))
 try:
-    collect("TrafficSpeedBands", "speed-bands.json", ["RoadName", "SpeedBand", "MinimumSpeed", "MaximumSpeed", "StartLat", "StartLon", "EndLat", "EndLon"])
+    collect("v3/TrafficSpeedBands", "speed-bands.json", ["RoadName", "SpeedBand", "MinimumSpeed", "MaximumSpeed", "StartLat", "StartLon", "EndLat", "EndLon"])
 except Exception as error:
     print("TrafficSpeedBands failed:", type(error).__name__, str(error))
 
