@@ -1,0 +1,17 @@
+rules_version = '2';
+service cloud.firestore {
+ match /databases/{database}/documents {
+  match /shares/{shareId} {
+   function signedIn(){return request.auth != null;}
+   function owner(){return signedIn() && resource.data.ownerUid == request.auth.uid;}
+   function viewer(){return signedIn() && request.auth.token.email_verified == true && request.auth.token.email == resource.data.viewerEmail;}
+   function valid(d){return d.keys().hasOnly(['ownerUid','viewerEmail','createdAt','expiresAt','active','lat','lng','updatedAt']) && d.keys().hasAll(['ownerUid','viewerEmail','createdAt','expiresAt','active','lat','lng','updatedAt']) && d.ownerUid is string && d.ownerUid.size() > 0 && d.viewerEmail is string && d.viewerEmail.size() >= 5 && d.viewerEmail.size() <= 254 && d.createdAt is timestamp && d.expiresAt is timestamp && d.active is bool && d.lat is number && d.lng is number && d.lat >= -90 && d.lat <= 90 && d.lng >= -180 && d.lng <= 180 && d.updatedAt is timestamp;}
+   allow get: if (owner() || viewer()) && resource.data.active == true && request.time < resource.data.expiresAt;
+   allow list: if false;
+   allow create: if signedIn() && valid(request.resource.data) && request.resource.data.ownerUid == request.auth.uid && request.resource.data.active == true && request.resource.data.createdAt == request.time && request.resource.data.updatedAt == request.time && request.resource.data.expiresAt > request.time && request.resource.data.expiresAt <= request.time + duration.value(1,'h');
+   allow update: if owner() && valid(request.resource.data) && request.resource.data.ownerUid == resource.data.ownerUid && request.resource.data.viewerEmail == resource.data.viewerEmail && request.resource.data.createdAt == resource.data.createdAt && request.resource.data.expiresAt == resource.data.expiresAt && resource.data.active == true && request.time < resource.data.expiresAt && request.resource.data.updatedAt == request.time && (request.resource.data.active == false || request.resource.data.active == true);
+   allow delete: if owner();
+  }
+  match /{document=**} {allow read, write: if false;}
+ }
+}
