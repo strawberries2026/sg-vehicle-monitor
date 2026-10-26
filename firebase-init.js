@@ -1,0 +1,5 @@
+// Firebase web configuration is public. Access control belongs in Firebase Auth and Firestore rules.
+// Remote location collection is intentionally disabled until consent and security checks are complete.
+import {initializeApp} from 'https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js';
+const firebaseConfig={apiKey:'AIzaSyC1AQ2LvmC7S4mG_tnJt8LRhTo1bjzXitA',authDomain:'sg-vehicle-monitor-pro.firebaseapp.com',projectId:'sg-vehicle-monitor-pro',storageBucket:'sg-vehicle-monitor-pro.firebasestorage.app',messagingSenderId:'254316068234',appId:'1:254316068234:web:4dc2f6968d4a97faafdc73'};
+try{const app=initializeApp(firebaseConfig);window.sgVehicleFirebase={connected:!!app,projectId:firebaseConfig.projectId,sharingEnabled:false};const el=document.getElementById('sharing-status');if(el)el.textContent='Firebase app initialised. Live location sharing remains disabled until Google sign-in and Firestore rules are secured.';}catch(e){console.error('Firebase initialisation failed',e);const el=document.getElementById('sharing-status');if(el)el.textContent='Firebase initialisation unavailable. No remote sharing is active.';}
