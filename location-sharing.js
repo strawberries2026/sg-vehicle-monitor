@@ -5,3 +5,6 @@ phone.addEventListener('input',()=>{status.textContent='Phone number stays in th
 $('sharing-start').addEventListener('click',()=>{status.textContent='Location sharing remains disabled until approved-viewer consent, secure rules and participant limits are implemented and tested.'});
 $('sharing-stop').addEventListener('click',()=>{status.textContent='No remote sharing session is active. Use Stop GPS above to stop local location tracking.'});
 })();
+
+// Consent review is informational only: never store an approval locally or remotely.
+$('consent-preview').addEventListener('click',()=>{const email=$('viewer-email').value.trim().toLowerCase();const checked=$('consent-check').checked;const out=$('consent-status');if(!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)){out.textContent='Enter the specific viewer’s valid Google account email.';return;}if(!checked){out.textContent='Consent checkbox is required. No location sharing has started.';return;}out.textContent='Preview reviewed: '+email+' would be the only invited viewer for a maximum of one hour. No permission was granted and no GPS data was transmitted. Secure approval is not yet active.';});
