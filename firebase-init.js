@@ -7,7 +7,7 @@ try{
  const app=initializeApp(firebaseConfig),auth=getAuth(app);auth.useDeviceLanguage();
  window.sgVehicleFirebase={connected:true,projectId:firebaseConfig.projectId,sharingEnabled:false};
  const provider=new GoogleAuthProvider();provider.setCustomParameters({prompt:'select_account'});
- onAuthStateChanged(auth,user=>{authStatus.textContent=user?'Signed in: '+(user.displayName||user.email||'Google account'):'Not signed in';login.hidden=!!user;logout.hidden=!user;});
+ onAuthStateChanged(auth,user=>{window.sgVehicleFirebase.currentUserEmail=user?.email||null;window.dispatchEvent(new Event('sg-auth-changed'));authStatus.textContent=user?'Signed in: '+(user.displayName||user.email||'Google account'):'Not signed in';login.hidden=!!user;logout.hidden=!user;});
  getRedirectResult(auth).catch(e=>{authStatus.textContent='Sign-in could not finish: '+e.code+'. Try Chrome browser.';});
  login.addEventListener('click',async()=>{login.disabled=true;authStatus.textContent='Opening Google sign-in…';try{await signInWithPopup(auth,provider);}catch(e){if(e.code==='auth/popup-blocked'||e.code==='auth/operation-not-supported-in-this-environment'){try{await signInWithRedirect(auth,provider);return}catch(x){authStatus.textContent='Sign-in failed: '+x.code;}}else{authStatus.textContent='Sign-in failed: '+e.code+(e.code==='auth/unauthorized-domain'?' — check authorised domains.':'');}}finally{login.disabled=false;}});
  logout.addEventListener('click',async()=>{try{await signOut(auth)}catch(e){authStatus.textContent='Sign-out failed: '+e.code}});
