@@ -20,5 +20,14 @@ def collect(endpoint, filename, fields):
     (folder / filename).write_text(json.dumps(payload), encoding="utf-8")
     print(filename, len(clean))
 
-collect("TrafficIncidents", "incidents.json", ["Type", "Latitude", "Longitude", "Message"])
-collect("v3/TrafficSpeedBands", "speed-bands.json", ["RoadName", "SpeedBand", "MinimumSpeed", "MaximumSpeed", "StartLat", "StartLon", "EndLat", "EndLon"])
+try:
+    collect("TrafficIncidents", "incidents.json", ["Type", "Latitude", "Longitude", "Message"])
+except Exception as error:
+    print("TrafficIncidents failed:", type(error).__name__, str(error))
+try:
+    collect("TrafficSpeedBands", "speed-bands.json", ["RoadName", "SpeedBand", "MinimumSpeed", "MaximumSpeed", "StartLat", "StartLon", "EndLat", "EndLon"])
+except Exception as error:
+    print("TrafficSpeedBands failed:", type(error).__name__, str(error))
+
+if not list(folder.glob('*.json')):
+    raise SystemExit('No traffic feeds succeeded; check endpoint responses above')
