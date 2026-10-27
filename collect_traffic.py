@@ -20,14 +20,18 @@ def collect(endpoint, filename, fields):
     (folder / filename).write_text(json.dumps(payload), encoding="utf-8")
     print(filename, len(clean))
 
+successes = 0
 try:
     collect("TrafficIncidents", "incidents.json", ["Type", "Latitude", "Longitude", "Message"])
+    successes += 1
 except Exception as error:
     print("TrafficIncidents failed:", type(error).__name__, str(error))
 try:
     collect("v4/TrafficSpeedBands", "speed-bands.json", ["RoadName", "SpeedBand", "MinimumSpeed", "MaximumSpeed", "StartLat", "StartLon", "EndLat", "EndLon"])
+    successes += 1
 except Exception as error:
     print("TrafficSpeedBands failed:", type(error).__name__, str(error))
 
-if not list(folder.glob('*.json')):
-    raise SystemExit('No traffic feeds succeeded; check endpoint responses above')
+if successes != 2:
+    raise SystemExit(f'Only {successes}/2 traffic feeds refreshed. Existing snapshots were preserved where collection failed; inspect the errors above.')
+print('Both traffic feeds refreshed successfully')
