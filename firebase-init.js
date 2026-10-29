@@ -8,7 +8,7 @@ const check = byId('session-check'), health = byId('session-health');
 try {
  const app = initializeApp(firebaseConfig), auth = getAuth(app);
  auth.useDeviceLanguage();
- window.sgVehicleFirebase = {connected: true, projectId: firebaseConfig.projectId, sharingEnabled: false};
+ window.sgVehicleFirebase = {connected: true, projectId: firebaseConfig.projectId, sharingEnabled: false, auth};
  const provider = new GoogleAuthProvider();
  provider.setCustomParameters({prompt: 'select_account'});
  let generation = 0, checking = false, lastCheck = 0;
@@ -52,6 +52,7 @@ try {
   checking = false;
   lastCheck = 0;
   window.sgVehicleFirebase.currentUserEmail = user?.email || null;
+  window.sgVehicleFirebase.currentUserUid = user?.uid || null;
   window.dispatchEvent(new Event('sg-auth-changed'));
   authStatus.textContent = user ? 'Signed in: ' + (user.displayName || user.email || 'Google account') : 'Not signed in';
   health.textContent = user ? 'Session refresh: not checked.' : 'Session refresh: sign in to check.';
