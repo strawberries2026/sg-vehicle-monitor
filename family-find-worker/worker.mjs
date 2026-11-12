@@ -1,3 +1,4 @@
+import {acceptInvitation} from './consent.mjs';
 import {createInvitation} from './invitations.mjs';
 // SG Family Find Worker: staging-only security baseline.
 // No location endpoints are enabled. Deploy only to an isolated staging Worker.
@@ -72,6 +73,26 @@ export default {
     if(error?.message==='Database unavailable'||error?.message==='Database insert failed')return response({error:'Service unavailable'},503,origin);
     return response({error:'Authentication or request failed'},401,origin);
    }
+  }
+  if(url.pathname==='/v1/consent'&&request.method==='POST'){
+   if(request.headers.get('Content-Type')?.split(';')[0].trim()!=='application/json')return response({error:'JSON required'},415,origin);
+   const length=Number(request.headers.get('Content-Length')||0);
+   if(!Number.isFinite(length)||length>1024)return response({error:'Request too large'},413,origin);
+   let payload;
+   try{
+    const raw=await request.text();
+    if(raw.length>1024)return response({error:'Request too large'},413,origin);
+    payload=JSON.parse(raw);
+   }catch{return response({error:'Invalid JSON'},400,origin);}
+   if(!payload||typeof payload!=='object'||Array.isArray(payload)||
+      Object.keys(payload).some(key=>!['token','agreed'].includes(key))||
+      typeof payload.token!=='string'||payload.agreed!==true)
+      return response({error:'Explicit consent and valid invitation required'},400,origin);
+   try{
+    const result=await acceptInvitation(env.DB,payload.token,true);
+    if(result.error)return response({error:result.error},result.status,origin);
+    return response({id:result.id,deviceToken:result.deviceToken,expiresAt:result.expiresAt},200,origin);
+   }catch{return response({error:'Service unavailable'},503,origin);}
   }
   // Deliberately fail closed until invitation, consent and revocation tests pass.
   return response({error:'Not available; location sharing is disabled'},404,origin);
