@@ -1,3 +1,4 @@
+import {updatePosition} from './positions.mjs';
 import {acceptInvitation} from './consent.mjs';
 import {createInvitation} from './invitations.mjs';
 // SG Family Find Worker: staging-only security baseline.
@@ -92,6 +93,27 @@ export default {
     const result=await acceptInvitation(env.DB,payload.token,true);
     if(result.error)return response({error:result.error},result.status,origin);
     return response({id:result.id,deviceToken:result.deviceToken,expiresAt:result.expiresAt},200,origin);
+   }catch{return response({error:'Service unavailable'},503,origin);}
+  }
+  if(url.pathname==='/v1/positions'&&request.method==='POST'){
+   if(request.headers.get('Content-Type')?.split(';')[0].trim()!=='application/json')return response({error:'JSON required'},415,origin);
+   const match=/^Bearer ([a-f0-9]{64})$/.exec(request.headers.get('Authorization')||'');
+   if(!match)return response({error:'Device credential required'},401,origin);
+   const length=Number(request.headers.get('Content-Length')||0);
+   if(!Number.isFinite(length)||length>1024)return response({error:'Request too large'},413,origin);
+   let payload;
+   try{
+    const raw=await request.text();
+    if(raw.length>1024)return response({error:'Request too large'},413,origin);
+    payload=JSON.parse(raw);
+   }catch{return response({error:'Invalid JSON'},400,origin);}
+   if(!payload||typeof payload!=='object'||Array.isArray(payload)||
+      Object.keys(payload).some(key=>!['latitude','longitude','accuracy'].includes(key)))
+      return response({error:'Invalid location payload'},400,origin);
+   try{
+    const result=await updatePosition(env.DB,match[1],payload);
+    if(result.error)return response({error:result.error},result.status,origin);
+    return response({updatedAt:result.updatedAt},200,origin);
    }catch{return response({error:'Service unavailable'},503,origin);}
   }
   // Deliberately fail closed until invitation, consent and revocation tests pass.
