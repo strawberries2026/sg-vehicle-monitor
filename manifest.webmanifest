@@ -1,1 +1,31 @@
-{"name":"SG Vehicle & Phone Locator Pro","short_name":"Vehicle & Phone","start_url":"./","scope":"./","display":"standalone","background_color":"#0c1628","theme_color":"#101e34","description":"Singapore traffic information, local GPS and opt-in phone location-sharing preview","icons":[{"src":"./icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}],"id":"./"}
+{
+  "name": "SG Vehicle & Phone Locator Pro",
+  "short_name": "Vehicle & Phone",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0c1628",
+  "theme_color": "#101e34",
+  "description": "Singapore traffic information, local GPS and opt-in phone location-sharing preview",
+  "icons": [
+    {
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "id": "./"
+}
