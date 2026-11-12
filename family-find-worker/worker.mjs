@@ -39,7 +39,7 @@ export default {
  async fetch(request,env){
   const url=new URL(request.url),origin=request.headers.get('Origin');
   if(origin&&origin!==ORIGIN)return response({error:'Origin not allowed'},403);
-  if(request.method==='OPTIONS')return origin===ORIGIN?response({},204,origin):response({error:'Forbidden'},403);
+  if(request.method==='OPTIONS')return origin===ORIGIN?new Response(null,{status:204,headers:{'Access-Control-Allow-Origin':ORIGIN,'Access-Control-Allow-Methods':'GET, POST, OPTIONS','Access-Control-Allow-Headers':'Authorization, Content-Type','Access-Control-Max-Age':'600','Vary':'Origin'}}):response({error:'Forbidden'},403);
   if(url.pathname==='/health'&&request.method==='GET'){
    try{const result=await env.DB.prepare('SELECT 1 AS connected').first();
      return response({service:'SG Family Find API',database:result?.connected===1?'Connected':'Unavailable',status:'Staging baseline; sharing disabled'},result?.connected===1?200:503,origin);}
