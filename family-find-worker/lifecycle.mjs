@@ -1,21 +1,23 @@
-// Pure session lifecycle checks. Fail closed for malformed or expired records.
-// A database query must additionally match the authenticated viewer/device credential.
-export function activeShare(record, now=Date.now()) {
- if(!record||record.status!=='active'||record.revoked_at!=null||record.consented_at==null)return false;
- const expiry=Date.parse(record.expires_at);
- return Number.isFinite(expiry)&&expiry>now;
+// D1 family_shares timestamps are INTEGER Unix seconds.
+// Reject malformed, revoked or expired records rather than exposing location.
+export function seconds(value) {
+ return Number.isSafeInteger(value) && value >= 0 ? value : null;
 }
-export function pendingInvite(record, now=Date.now()) {
- if(!record||record.status!=='pending'||record.revoked_at!=null||record.consented_at!=null)return false;
- const expiry=Date.parse(record.expires_at);
- return Number.isFinite(expiry)&&expiry>now;
+export function activeShare(record, now=Math.floor(Date.now()/1000)) {
+ return !!record && record.status==='active' &&
+   record.revoked_at==null && seconds(record.consented_at)!==null &&
+   seconds(record.expires_at)!==null && record.expires_at>now;
 }
-export function safePosition(record, now=Date.now()) {
+export function pendingInvite(record, now=Math.floor(Date.now()/1000)) {
+ return !!record && record.status==='pending' &&
+   record.revoked_at==null && record.consented_at==null &&
+   seconds(record.expires_at)!==null && record.expires_at>now;
+}
+export function safePosition(record, now=Math.floor(Date.now()/1000)) {
  if(!activeShare(record,now))return null;
- const lat=record.last_lat,lng=record.last_lng;
+ const lat=record.last_lat,lng=record.last_lng,seen=seconds(record.last_seen_at);
  if(typeof lat!=='number'||!Number.isFinite(lat)||lat< -90||lat>90||
-    typeof lng!=='number'||!Number.isFinite(lng)||lng< -180||lng>180)return null;
- const seen=Date.parse(record.last_seen_at);
- if(!Number.isFinite(seen)||seen>now+60000)return null;
- return {latitude:lat,longitude:lng,lastSeenAt:record.last_seen_at};
+    typeof lng!=='number'||!Number.isFinite(lng)||lng< -180||lng>180||
+    seen===null||seen>now+60)return null;
+ return {latitude:lat,longitude:lng,lastSeenAt:seen};
 }
