@@ -1,3 +1,4 @@
+import {createInvitation} from './invitations.mjs';
 // SG Family Find Worker: staging-only security baseline.
 // No location endpoints are enabled. Deploy only to an isolated staging Worker.
 const ORIGIN = 'https://strawberries2026.github.io';
@@ -50,6 +51,27 @@ export default {
    if(!match)return response({error:'Authentication required'},401,origin);
    try{const viewer=await verifyFirebase(match[1]);return response({authenticated:true,uid:viewer.uid},200,origin);}
    catch{return response({error:'Authentication failed'},401,origin);}
+  }
+  if(url.pathname==='/v1/invitations'&&request.method==='POST'){
+   const match=/^Bearer (\\S+)$/.exec(request.headers.get('Authorization')||'');
+   if(!match)return response({error:'Authentication required'},401,origin);
+   if(request.headers.get('Content-Type')?.split(';')[0].trim()!=='application/json')return response({error:'JSON required'},415,origin);
+   const length=Number(request.headers.get('Content-Length')||0);
+   if(!Number.isFinite(length)||length>1024)return response({error:'Request too large'},413,origin);
+   try{
+    const viewer=await verifyFirebase(match[1]);
+    const raw=await request.text();
+    if(raw.length>1024)return response({error:'Request too large'},413,origin);
+    const payload=JSON.parse(raw||'{}');
+    if(!payload||typeof payload!=='object'||Array.isArray(payload)||Object.keys(payload).length)return response({error:'Unexpected request fields'},400,origin);
+    const invite=await createInvitation(env.DB,viewer.uid);
+    if(invite.rateLimited)return response({error:'Invitation limit reached'},429,origin);
+    return response({id:invite.id,token:invite.token,expiresAt:invite.expiresAt},201,origin);
+   }catch(error){
+    if(error instanceof SyntaxError)return response({error:'Invalid JSON'},400,origin);
+    if(error?.message==='Database unavailable'||error?.message==='Database insert failed')return response({error:'Service unavailable'},503,origin);
+    return response({error:'Authentication or request failed'},401,origin);
+   }
   }
   // Deliberately fail closed until invitation, consent and revocation tests pass.
   return response({error:'Not available; location sharing is disabled'},404,origin);
