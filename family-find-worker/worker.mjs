@@ -1,3 +1,4 @@
+import {readViewerPosition} from './viewer.mjs';
 import {updatePosition} from './positions.mjs';
 import {acceptInvitation} from './consent.mjs';
 import {createInvitation} from './invitations.mjs';
@@ -115,6 +116,17 @@ export default {
     if(result.error)return response({error:result.error},result.status,origin);
     return response({updatedAt:result.updatedAt},200,origin);
    }catch{return response({error:'Service unavailable'},503,origin);}
+  }
+  const positionMatch=/^\\/v1\\/positions\\/([0-9a-f-]{36})$/.exec(url.pathname);
+  if(positionMatch&&request.method==='GET'){
+   const match=/^Bearer (\\S+)$/.exec(request.headers.get('Authorization')||'');
+   if(!match)return response({error:'Authentication required'},401,origin);
+   try{
+    const viewer=await verifyFirebase(match[1]);
+    const result=await readViewerPosition(env.DB,positionMatch[1],viewer.uid);
+    if(result.error)return response({error:result.error},result.status,origin);
+    return response({position:result.position},200,origin);
+   }catch{return response({error:'Authentication failed or service unavailable'},401,origin);}
   }
   // Deliberately fail closed until invitation, consent and revocation tests pass.
   return response({error:'Not available; location sharing is disabled'},404,origin);
