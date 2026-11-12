@@ -1,3 +1,4 @@
+import {revokeByDevice,revokeByViewer} from './revoke.mjs';
 import {readViewerPosition} from './viewer.mjs';
 import {updatePosition} from './positions.mjs';
 import {acceptInvitation} from './consent.mjs';
@@ -127,6 +128,22 @@ export default {
     if(result.error)return response({error:result.error},result.status,origin);
     return response({position:result.position},200,origin);
    }catch{return response({error:'Authentication failed or service unavailable'},401,origin);}
+  }
+  const revokeMatch=/^\\/v1\\/shares\\/([0-9a-f-]{36})\\/revoke$/.exec(url.pathname);
+  if(revokeMatch&&request.method==='POST'){
+   const match=/^Bearer (\\S+)$/.exec(request.headers.get('Authorization')||'');
+   if(!match)return response({error:'Authentication required'},401,origin);
+   try{
+    let result;
+    if(/^[a-f0-9]{64}$/.test(match[1])){
+      result=await revokeByDevice(env.DB,revokeMatch[1],match[1]);
+    }else{
+      const viewer=await verifyFirebase(match[1]);
+      result=await revokeByViewer(env.DB,revokeMatch[1],viewer.uid);
+    }
+    if(result.error)return response({error:result.error},result.status,origin);
+    return response({revoked:true},200,origin);
+   }catch{return response({error:'Authentication or service failure'},401,origin);}
   }
   // Deliberately fail closed until invitation, consent and revocation tests pass.
   return response({error:'Not available; location sharing is disabled'},404,origin);
