@@ -57,7 +57,7 @@ export default {
    catch{return response({error:'Authentication failed'},401,origin);}
   }
   if(url.pathname==='/v1/invitations'&&request.method==='POST'){
-   const match=/^Bearer (\\S+)$/.exec(request.headers.get('Authorization')||'');
+   const match=/^Bearer (\S+)$/.exec(request.headers.get('Authorization')||'');
    if(!match)return response({error:'Authentication required'},401,origin);
    if(request.headers.get('Content-Type')?.split(';')[0].trim()!=='application/json')return response({error:'JSON required'},415,origin);
    const length=Number(request.headers.get('Content-Length')||0);
@@ -118,9 +118,9 @@ export default {
     return response({updatedAt:result.updatedAt},200,origin);
    }catch{return response({error:'Service unavailable'},503,origin);}
   }
-  const positionMatch=/^\\/v1\\/positions\\/([0-9a-f-]{36})$/.exec(url.pathname);
+  const positionMatch=/^\/v1\/positions\/([0-9a-f-]{36})$/.exec(url.pathname);
   if(positionMatch&&request.method==='GET'){
-   const match=/^Bearer (\\S+)$/.exec(request.headers.get('Authorization')||'');
+   const match=/^Bearer (\S+)$/.exec(request.headers.get('Authorization')||'');
    if(!match)return response({error:'Authentication required'},401,origin);
    try{
     const viewer=await verifyFirebase(match[1]);
@@ -129,9 +129,9 @@ export default {
     return response({position:result.position},200,origin);
    }catch{return response({error:'Authentication failed or service unavailable'},401,origin);}
   }
-  const revokeMatch=/^\\/v1\\/shares\\/([0-9a-f-]{36})\\/revoke$/.exec(url.pathname);
+  const revokeMatch=/^\/v1\/shares\/([0-9a-f-]{36})\/revoke$/.exec(url.pathname);
   if(revokeMatch&&request.method==='POST'){
-   const match=/^Bearer (\\S+)$/.exec(request.headers.get('Authorization')||'');
+   const match=/^Bearer (\S+)$/.exec(request.headers.get('Authorization')||'');
    if(!match)return response({error:'Authentication required'},401,origin);
    try{
     let result;
