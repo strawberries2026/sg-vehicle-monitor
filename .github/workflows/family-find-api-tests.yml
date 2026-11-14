@@ -1,0 +1,28 @@
+name: Family Find API security checks
+on:
+  push:
+    branches:
+      - feature/family-find-secure-api
+    paths:
+      - 'family-find-worker/**'
+      - '.github/workflows/family-find-api-tests.yml'
+  pull_request:
+    paths:
+      - 'family-find-worker/**'
+      - '.github/workflows/family-find-api-tests.yml'
+permissions:
+  contents: read
+jobs:
+  security-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check JavaScript syntax
+        run: |
+          for file in family-find-worker/*.mjs; do node --check "$file"; done
+      - name: Run API security smoke tests
+        run: node --test family-find-worker/*.test.mjs
