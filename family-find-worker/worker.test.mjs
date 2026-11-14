@@ -8,9 +8,17 @@ test('health succeeds without exposing locations',async()=>{
  const r=await worker.fetch(request('/health'),env);assert.equal(r.status,200);
  const j=await r.json();assert.equal(j.database,'Connected');assert.match(j.status,/disabled/);
 });
-test('all location routes fail closed',async()=>{
- for(const path of ['/v1/invitations','/v1/consent','/v1/positions','/v1/positions/123']){
-  const r=await worker.fetch(request(path,{method:'POST'}),env);assert.equal(r.status,404);
+test('sensitive endpoints reject unauthenticated or malformed requests',async()=>{
+ const cases=[
+  ['/v1/invitations','POST',401],
+  ['/v1/consent','POST',415],
+  ['/v1/positions','POST',415],
+  ['/v1/positions/123','POST',404],
+  ['/v1/shares/123/revoke','POST',404]
+ ];
+ for(const [path,method,status] of cases){
+  const r=await worker.fetch(request(path,{method}),env);
+  assert.equal(r.status,status,path);
  }
 });
 test('auth check requires Firebase token',async()=>{
