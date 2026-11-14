@@ -23,7 +23,6 @@ jobs:
           node-version: '22'
       - name: Check JavaScript syntax
         run: |
-          node --check family-find-worker/worker.mjs
-          node --check family-find-worker/worker.test.mjs
+          for file in family-find-worker/*.mjs; do node --check "$file"; done
       - name: Run API security smoke tests
-        run: node --test family-find-worker/worker.test.mjs
+        run: node --test family-find-worker/*.test.mjs
