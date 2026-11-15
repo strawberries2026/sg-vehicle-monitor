@@ -67,3 +67,22 @@ test('OPTIONS preflight returns empty 204 with allowlisted origin',async()=>{
  assert.equal(r.status,204);assert.equal(await r.text(),'');
  assert.equal(r.headers.get('access-control-allow-origin'),'https://strawberries2026.github.io');
 });
+
+test('position-view endpoint requires verified viewer authentication',async()=>{
+ const id='12345678-1234-4123-8123-123456789abc';
+ const r=await worker.fetch(request('/v1/positions/'+id),env);
+ assert.equal(r.status,401);
+});
+test('stop-sharing endpoint requires viewer or device credentials',async()=>{
+ const id='12345678-1234-4123-8123-123456789abc';
+ const r=await worker.fetch(request('/v1/shares/'+id+'/revoke',{method:'POST'}),env);
+ assert.equal(r.status,401);
+});
+test('GPS update endpoint rejects missing device credential before database access',async()=>{
+ const r=await worker.fetch(request('/v1/positions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({latitude:1.3,longitude:103.8,accuracy:15})}),env);
+ assert.equal(r.status,401);
+});
+test('consent endpoint rejects false consent before touching database',async()=>{
+ const r=await worker.fetch(request('/v1/consent',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:'a'.repeat(64),agreed:false})}),env);
+ assert.equal(r.status,400);
+});
