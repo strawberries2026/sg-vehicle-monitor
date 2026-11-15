@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer"><title>SG Family Find — consent preview</title>
+<style>body{font:16px system-ui,sans-serif;margin:0;background:#f5f7fb;color:#172033}main{max-width:480px;margin:auto;padding:24px}section{background:white;border-radius:16px;padding:24px;box-shadow:0 3px 16px #15263c18}h1{font-size:1.5rem}p{line-height:1.5}.note{background:#fff4d6;padding:12px;border-radius:8px}button{width:100%;padding:15px;margin-top:12px;border:0;border-radius:10px;font-weight:700;font-size:1rem}button.primary{background:#1453ad;color:white}button.secondary{background:#e6eaf1;color:#172033}button:disabled{opacity:.5}label{display:flex;align-items:flex-start;gap:10px;margin:20px 0}input{width:20px;height:20px;flex:none}small{color:#586478}#result{font-weight:600}</style></head>
+<body><main><section><h1>SG Family Find</h1><p class="note"><strong>Preview only.</strong> This page does not request GPS permission, send your location, or activate sharing.</p>
+<h2>Review location-sharing request</h2><p>A family member is requesting permission to see your location. Before agreeing, confirm the request with them independently.</p>
+<p><strong>What would be shared:</strong> your current GPS position and last update time, for up to one hour, with the authorised viewer only.</p>
+<p><strong>Your choice:</strong> you may decline or stop sharing at any time. Your browser may stop updating location when it is locked or closed.</p>
+<label><input type="checkbox" id="agree"><span>I understand what will be shared and voluntarily agree to this request.</span></label>
+<button class="primary" id="accept" disabled>Continue (preview only)</button><button class="secondary" id="decline">Decline</button>
+<p id="result" role="status" aria-live="polite"></p><small>No Google sign-in is required from the person consenting. This preview is not connected to the production service.</small>
+</section></main>
+<script>
+'use strict';
+const agree=document.getElementById('agree'),accept=document.getElementById('accept'),result=document.getElementById('result');
+agree.addEventListener('change',()=>{accept.disabled=!agree.checked;});
+accept.addEventListener('click',()=>{result.textContent='Consent preview completed. No location was transmitted.';});
+document.getElementById('decline').addEventListener('click',()=>{agree.checked=false;accept.disabled=true;result.textContent='Request declined. No location was transmitted.';});
+</script></body></html>
