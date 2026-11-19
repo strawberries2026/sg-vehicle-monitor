@@ -13,6 +13,8 @@
   const feeds = ['incident-health', 'speed-health'].map(id => $(id)?.textContent || '');
   const feed = feeds.join(' ');
   text('home-traffic', /stale/i.test(feed) ? 'Delayed' : /unavailable|missing/i.test(feed) ? 'Unavailable' : feeds.every(value => /current/i.test(value)) ? 'Current snapshots' : 'Checking…');
+  text('home-incident-health', feeds[0] || 'Traffic incidents: checking…');
+  text('home-speed-health', feeds[1] || 'Road speed bands: checking…');
   text('home-favourites', count('sg-vehicle-favourite-cameras-v1') + ' saved');
   text('home-destinations', count('sg-vehicle-destinations-v1') + ' saved');
  }
