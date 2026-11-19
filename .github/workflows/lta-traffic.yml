@@ -18,6 +18,25 @@ jobs:
         env:
           LTA_ACCOUNT_KEY: ${{ secrets.LTA_ACCOUNT_KEY }}
         run: python3 collect_traffic.py
+      - name: Verify collected snapshot timestamps
+        run: |
+          python3 - <<'PY'
+          import datetime, json, pathlib, os
+          now = datetime.datetime.now(datetime.timezone.utc)
+          summary = ['### LTA traffic snapshot verification', '']
+          for name in ('incidents', 'speed-bands'):
+              payload = json.loads(pathlib.Path('data', name + '.json').read_text())
+              timestamp = datetime.datetime.fromisoformat(payload['updated_at'].replace('Z', '+00:00'))
+              age = (now - timestamp).total_seconds()
+              if timestamp.tzinfo is None or age < -60 or age > 300:
+                  raise SystemExit(f'{name}: invalid or stale collection timestamp ({age:.0f}s)')
+              items = payload.get('items')
+              if not isinstance(items, list):
+                  raise SystemExit(f'{name}: items is not a list')
+              summary.append(f'- {name}: {len(items)} records, collected {timestamp.isoformat()}, age {age:.0f}s')
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as output:
+              output.write('\n'.join(summary) + '\n')
+          PY
       - name: Commit public snapshots
         run: |
           git config user.name "github-actions[bot]"
