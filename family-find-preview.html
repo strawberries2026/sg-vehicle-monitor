@@ -7,13 +7,37 @@
 <p><strong>What would be shared:</strong> your current GPS position and last update time, for up to one hour, with the authorised viewer only.</p>
 <p><strong>Your choice:</strong> you may decline or stop sharing at any time. Your browser may stop updating location when it is locked or closed.</p>
 <label><input type="checkbox" id="agree"><span>I understand what will be shared and voluntarily agree to this request.</span></label>
-<button class="primary" id="accept" disabled>Continue (preview only)</button><button class="secondary" id="decline">Decline</button>
+<button class="primary" id="accept" disabled>Review consent (preview only)</button><button class="secondary" id="decline">Decline</button><div id="controls" hidden><h2>Sharing controls — demonstration</h2><p id="session-status" role="status">No session active</p><button class="primary" id="send" type="button">Simulate one update</button><button class="secondary" id="stop" type="button">Stop simulated sharing</button></div>
 <p id="result" role="status" aria-live="polite"></p><small>No Google sign-in is required from the person consenting. This preview is not connected to the production service.</small>
 </section></main>
-<script>
-'use strict';
-const agree=document.getElementById('agree'),accept=document.getElementById('accept'),result=document.getElementById('result');
+<script type="module">
+import {createSharingSession} from './family-find-worker/sharing-session.mjs';
+const $=id=>document.getElementById(id);
+const agree=$('agree'),accept=$('accept'),result=$('result'),controls=$('controls');
+const session=createSharingSession({
+ api:{
+  consent:async()=>({id:'preview-session',deviceToken:'preview-only',expiresAt:Math.floor(Date.now()/1000)+3600}),
+  updatePosition:async()=>({updatedAt:Math.floor(Date.now()/1000)}),
+  stopSharing:async()=>({revoked:true})
+ },
+ geolocate:async()=>({latitude:0,longitude:0,accuracy:0})
+});
 agree.addEventListener('change',()=>{accept.disabled=!agree.checked;});
-accept.addEventListener('click',()=>{result.textContent='Consent preview completed. No location was transmitted.';});
-document.getElementById('decline').addEventListener('click',()=>{agree.checked=false;accept.disabled=true;result.textContent='Request declined. No location was transmitted.';});
+accept.addEventListener('click',async()=>{
+ if(!agree.checked)return;
+ try{await session.accept('preview',true);controls.hidden=false;$('session-status').textContent='Simulated session active — no GPS collected';result.textContent='Consent simulated locally. No location transmitted.';}
+ catch(error){result.textContent=error.message;}
+});
+$('send').addEventListener('click',async()=>{
+ try{await session.sendOnce();$('session-status').textContent='Simulated update complete — no GPS collected';}
+ catch(error){result.textContent=error.message;}
+});
+$('stop').addEventListener('click',async()=>{
+ try{await session.stop();controls.hidden=true;agree.checked=false;accept.disabled=true;result.textContent='Simulated session stopped. No location transmitted.';}
+ catch(error){result.textContent=error.message;}
+});
+$('decline').addEventListener('click',()=>{
+ if(session.status().active){result.textContent='Use Stop simulated sharing before declining.';return;}
+ agree.checked=false;accept.disabled=true;result.textContent='Request declined. No location transmitted.';
+});
 </script></body></html>
