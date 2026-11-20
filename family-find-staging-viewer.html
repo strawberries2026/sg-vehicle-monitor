@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer"><title>SG Family Find — staging viewer</title>
+<style>body{font:16px system-ui,sans-serif;background:#f3f6fa;color:#172033;margin:0}main{max-width:520px;margin:auto;padding:20px}section{background:white;padding:22px;border-radius:16px}h1{font-size:1.5rem}p{line-height:1.5}label{display:block;margin:15px 0}input{box-sizing:border-box;width:100%;padding:13px;border:1px solid #aab5c3;border-radius:8px;font-size:1rem}button{width:100%;padding:14px;border:0;border-radius:9px;background:#1453ad;color:white;font-size:1rem;font-weight:700;margin:8px 0}button:disabled{opacity:.5}a{overflow-wrap:anywhere}.notice{background:#fff0cf;padding:12px;border-radius:8px}</style></head>
+<body><main><section><h1>SG Family Find — staging viewer</h1>
+<p class="notice"><strong>Not released.</strong> This is a development-only viewer. No automatic location polling or background GPS access.</p>
+<p id="auth-status" role="status">Checking sign-in…</p>
+<button id="login">Sign in with Google</button>
+<label for="share">Share ID from your invitation</label><input id="share" autocomplete="off" spellcheck="false" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+<button id="refresh" disabled>Refresh shared location</button>
+<p id="status" role="status" aria-live="polite">No location requested.</p>
+<p id="details"></p><a id="map" hidden target="_blank" rel="noopener noreferrer">Open location in OpenStreetMap</a>
+<p><small>Only the verified invitation creator can view a shared position. An outdated reading is not a live location.</small></p>
+</section></main>
+<script type="module">
+import {initializeApp,getApps,getApp} from 'https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js';
+import {getAuth,onAuthStateChanged,GoogleAuthProvider,signInWithPopup,signInWithRedirect,getRedirectResult} from 'https://www.gstatic.com/firebasejs/13.1.0/firebase-auth.js';
+import {createFamilyFindClient} from './family-find-worker/client.mjs';
+import {createViewerController} from './family-find-worker/viewer-controller.mjs';
+const firebaseConfig={apiKey:'AIzaSyC1AQ2LvmC7S4mG_tnJt8LRhTo1bjzXitA',authDomain:'sg-vehicle-monitor-pro.firebaseapp.com',projectId:'sg-vehicle-monitor-pro',storageBucket:'sg-vehicle-monitor-pro.firebasestorage.app',messagingSenderId:'254316068234',appId:'1:254316068234:web:4dc2f6968d4a97faafdc73'};
+const app=getApps().length?getApp():initializeApp(firebaseConfig);
+const auth=getAuth(app),provider=new GoogleAuthProvider();
+const api=createFamilyFindClient('https://sg-family-find-staging.songkhengleong.workers.dev/');
+const viewer=createViewerController({api});
+const $=id=>document.getElementById(id);
+let busy=false;
+const setStatus=message=>{$('status').textContent=message;};
+function controls(){$('login').hidden=!!auth.currentUser;$('refresh').disabled=busy||!auth.currentUser;}
+onAuthStateChanged(auth,user=>{$('auth-status').textContent=user?'Signed in: '+(user.email||'Google account'):'Sign in to view a shared location';controls();});
+getRedirectResult(auth).catch(()=>setStatus('Sign-in was not completed. Please try again.'));
+$('login').addEventListener('click',async()=>{
+ try{await signInWithPopup(auth,provider);}
+ catch(e){
+  if(['auth/popup-blocked','auth/operation-not-supported-in-this-environment'].includes(e.code)){
+   try{await signInWithRedirect(auth,provider);}catch{setStatus('Google sign-in failed.');}
+  }else setStatus('Google sign-in failed. Please retry.');
+ }
+});
+$('refresh').addEventListener('click',async()=>{
+ if(busy||!auth.currentUser)return;
+ const shareId=$('share').value.trim();
+ if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(shareId)){setStatus('Enter a valid share ID.');return;}
+ busy=true;controls();$('map').hidden=true;$('details').textContent='';
+ try{
+  const token=await auth.currentUser.getIdToken();
+  const result=await viewer.refresh(shareId,token);
+  setStatus(result.message);
+  if(result.state==='current'||result.state==='stale'){
+   $('details').textContent='Latitude '+result.latitude+', longitude '+result.longitude+' · '+result.ageSeconds+' seconds since last update';
+   $('map').href=result.mapsUrl;$('map').hidden=false;
+  }
+ }catch(e){setStatus(e instanceof Error?e.message:'Location request failed');}
+ finally{busy=false;controls();}
+});
+</script></body></html>
