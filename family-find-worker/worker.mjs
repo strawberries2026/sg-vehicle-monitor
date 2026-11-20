@@ -59,7 +59,7 @@ export default {
   // Fail closed for all sharing routes; health and Firebase auth diagnostics remain available.
   // This flag is not a substitute for isolated D1 bindings or explicit deployment approval.
   if(url.pathname.startsWith('/v1/') && url.pathname!=='/v1/auth-check' &&
-     env?.FAMILY_FIND_SHARING_ENABLED!=='true')
+     (env?.FAMILY_FIND_SHARING_ENABLED!=='true' || env?.FAMILY_FIND_ENV!=='staging'))
     return response({error:'Family sharing is disabled'},503,origin);
   if(url.pathname==='/v1/invitations'&&request.method==='POST'){
    const match=/^Bearer (\S+)$/.exec(request.headers.get('Authorization')||'');
