@@ -40,3 +40,30 @@ test('failed revocation keeps credential so user can retry',async()=>{
  await assert.rejects(()=>session.stop(),/offline/);
  assert.equal(session.status().active,true);
 });
+
+test('expired session rejects GPS collection without invoking geolocation',async()=>{
+ const events=[];
+ const session=createSharingSession({
+  api:{consent:async()=>({id:'expired',deviceToken:'secret',expiresAt:Math.floor(Date.now()/1000)-1}),
+   updatePosition:async()=>{events.push('update');},stopSharing:async()=>({revoked:true})},
+  geolocate:async()=>{events.push('gps');return {latitude:1,longitude:2,accuracy:3};}
+ });
+ await session.accept('invite',true);
+ await assert.rejects(()=>session.sendOnce(),/expired/);
+ assert.deepEqual(events,[]);
+});
+test('concurrent sharing requests cannot start two GPS updates',async()=>{
+ let release;
+ const gate=new Promise(resolve=>{release=resolve;});
+ let gpsCalls=0;
+ const session=createSharingSession({
+  api:{consent:async()=>({id:'share',deviceToken:'secret',expiresAt:expiry}),
+   updatePosition:async()=>({updatedAt:1}),stopSharing:async()=>({revoked:true})},
+  geolocate:async()=>{gpsCalls++;await gate;return {latitude:1,longitude:2,accuracy:3};}
+ });
+ await session.accept('invite',true);
+ const pending=session.sendOnce();
+ await assert.rejects(()=>session.sendOnce(),/No active sharing session/);
+ release();await pending;
+ assert.equal(gpsCalls,1);
+});
