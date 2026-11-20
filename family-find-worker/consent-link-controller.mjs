@@ -15,6 +15,14 @@ export function createConsentLinkController({historyObject,href}) {
    pending=null;
    return result;
   },
+  async beginSharing(sharingSession,agreed){
+   if(agreed!==true)throw new Error('Explicit consent required');
+   if(!pending)throw new Error('No valid invitation');
+   if(typeof sharingSession?.accept!=='function')throw new TypeError('Sharing controller required');
+   const result=await sharingSession.accept(pending,true);
+   pending=null;
+   return result;
+  },
   decline(){pending=null;return {declined:true};}
  });
 }
