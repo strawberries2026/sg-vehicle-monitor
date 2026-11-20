@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer"><title>SG Family Find — staging invitation</title>
+<style>body{font:16px system-ui,sans-serif;background:#f3f6fa;color:#172033;margin:0}main{max-width:520px;margin:auto;padding:20px}section{background:white;padding:22px;border-radius:16px}h1{font-size:1.5rem}p{line-height:1.5}label{display:block;margin:14px 0}input{box-sizing:border-box;width:100%;padding:13px;border:1px solid #9aa8b8;border-radius:8px;font-size:1rem}button{width:100%;padding:14px;border:0;border-radius:9px;background:#1453ad;color:white;font-size:1rem;font-weight:700;margin:8px 0}button:disabled{opacity:.5}a{overflow-wrap:anywhere}.notice{background:#fff0cf;padding:12px;border-radius:8px}</style></head>
+<body><main><section><h1>SG Family Find — staging invitation</h1>
+<p class="notice"><strong>Not released.</strong> Invitations cannot be created until the separate staging service is approved and enabled. Never send a test invitation without the recipient's agreement.</p>
+<p id="auth-status">Checking sign-in…</p><button id="login">Sign in with Google</button>
+<label for="phone">Recipient's phone number (international format)</label>
+<input id="phone" inputmode="tel" autocomplete="tel" placeholder="65XXXXXXXX">
+<button id="prepare" disabled>Prepare WhatsApp invitation</button>
+<p id="status" role="status" aria-live="polite"></p>
+<div id="result" hidden>
+<p>Invitation expires: <strong id="expiry"></strong></p>
+<p>Save this share ID for the viewer. It is not a GPS location or an invitation token.</p>
+<input id="share" readonly aria-label="Share ID">
+<button id="copy" type="button">Copy share ID</button>
+<a id="whatsapp" rel="noopener noreferrer" target="_blank">Open WhatsApp to review and send invitation</a>
+<p><a href="./family-find-staging-viewer.html">Open staging viewer</a></p>
+</div>
+<p><small>WhatsApp does not send automatically. The recipient must independently consent and press Share my current location.</small></p>
+</section></main>
+<script type="module">
+import {initializeApp,getApps,getApp} from 'https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js';
+import {getAuth,onAuthStateChanged,GoogleAuthProvider,signInWithPopup,signInWithRedirect,getRedirectResult} from 'https://www.gstatic.com/firebasejs/13.1.0/firebase-auth.js';
+import {createFamilyFindClient} from './family-find-worker/client.mjs';
+import {createInvitationController} from './family-find-worker/invitation-controller.mjs';
+const firebaseConfig={apiKey:'AIzaSyC1AQ2LvmC7S4mG_tnJt8LRhTo1bjzXitA',authDomain:'sg-vehicle-monitor-pro.firebaseapp.com',projectId:'sg-vehicle-monitor-pro',storageBucket:'sg-vehicle-monitor-pro.firebasestorage.app',messagingSenderId:'254316068234',appId:'1:254316068234:web:4dc2f6968d4a97faafdc73'};
+const auth=getAuth(getApps().length?getApp():initializeApp(firebaseConfig));
+const provider=new GoogleAuthProvider();
+const api=createFamilyFindClient('https://sg-family-find-staging.songkhengleong.workers.dev/');
+const inviter=createInvitationController({api,consentPageUrl:new URL('./family-find-staging-consent.html',location.href).href});
+const $=id=>document.getElementById(id);
+let busy=false;
+const status=message=>{$('status').textContent=message;};
+function controls(){$('login').hidden=!!auth.currentUser;$('prepare').disabled=busy||!auth.currentUser;}
+onAuthStateChanged(auth,user=>{$('auth-status').textContent=user?'Signed in: '+(user.email||'Google account'):'Sign in to prepare an invitation';controls();});
+getRedirectResult(auth).catch(()=>status('Sign-in not completed. Please retry.'));
+$('login').addEventListener('click',async()=>{
+ try{await signInWithPopup(auth,provider);}
+ catch(e){
+  if(['auth/popup-blocked','auth/operation-not-supported-in-this-environment'].includes(e.code)){
+   try{await signInWithRedirect(auth,provider);}catch{status('Google sign-in failed.');}
+  }else status('Google sign-in failed. Please retry.');
+ }
+});
+$('prepare').addEventListener('click',async()=>{
+ if(busy||!auth.currentUser)return;
+ busy=true;controls();$('result').hidden=true;
+ try{
+  const token=await auth.currentUser.getIdToken();
+  const result=await inviter.prepare(token,$('phone').value);
+  $('share').value=result.id;
+  $('expiry').textContent=new Date(result.expiresAt*1000).toLocaleString();
+  $('whatsapp').href=result.whatsappUrl;
+  $('result').hidden=false;
+  status('Invitation prepared. Review it in WhatsApp before sending.');
+ }catch(e){status(e instanceof Error?e.message:'Unable to prepare invitation');}
+ finally{busy=false;controls();}
+});
+$('copy').addEventListener('click',async()=>{
+ try{await navigator.clipboard.writeText($('share').value);status('Share ID copied.');}
+ catch{status('Copy unavailable; select the share ID manually.');}
+});
+</script></body></html>
