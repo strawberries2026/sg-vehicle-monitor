@@ -30,3 +30,19 @@ test('invalid invitation does not enable consent',async()=>{
  assert.equal(controller.hasInvitation(),false);
  await assert.rejects(()=>controller.accept({consent:async()=>{}},true),/No valid invitation/);
 });
+
+test('beginSharing hands invitation token to sharing controller exactly once',async()=>{
+ const received=[];
+ const controller=createConsentLinkController({historyObject:{replaceState(){}},href:'https://example.com/#invite='+token});
+ const sharing={accept:async(value,agreed)=>{received.push([value,agreed]);return {active:true};}};
+ await assert.rejects(()=>controller.beginSharing(sharing,false),/Explicit consent/);
+ assert.deepEqual(received,[]);
+ assert.deepEqual(await controller.beginSharing(sharing,true),{active:true});
+ assert.deepEqual(received,[[token,true]]);
+ await assert.rejects(()=>controller.beginSharing(sharing,true),/No valid invitation/);
+});
+test('failed sharing initiation retains invitation for retry',async()=>{
+ const controller=createConsentLinkController({historyObject:{replaceState(){}},href:'https://example.com/#invite='+token});
+ await assert.rejects(()=>controller.beginSharing({accept:async()=>{throw Error('offline');}},true),/offline/);
+ assert.equal(controller.hasInvitation(),true);
+});
