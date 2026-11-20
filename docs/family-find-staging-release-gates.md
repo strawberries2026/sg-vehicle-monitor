@@ -16,10 +16,10 @@
 
 ## Important release blocker
 
-The current `worker.mjs` contains a comment saying location endpoints are disabled, but the route handlers are present and can operate if the Worker is deployed with a compatible D1 binding. **Do not deploy this Worker to the existing production endpoint.** Before staging deployment, add and test an explicit environment-controlled enablement gate and confirm that staging configuration cannot point at production D1.
+The Worker now requires both `FAMILY_FIND_ENV=staging` and `FAMILY_FIND_SHARING_ENABLED=true` to activate sharing endpoints; the initial staging manifest requires sharing disabled. **Do not deploy this Worker to the existing production endpoint.** Environment flags do not prove D1 isolation: confirm the actual staging database UUID in Cloudflare before deploying. Staging schema and cleanup SQL are prepared under `family-find-worker/sql/`, but neither has been executed.
 
 ## Verification record
 
-- GitHub Actions Run #82: 69 automated tests passed; zero failures.
+- GitHub Actions Run #114: 85 automated tests passed; zero failures (before staging SQL files were added).
 - No staging D1 integration or physical Android/iPhone end-to-end test has been verified.
 - No production merge or deployment has been performed as part of this work.
