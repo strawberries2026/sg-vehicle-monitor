@@ -16,10 +16,10 @@
 
 ## Important release blocker
 
-The Worker now requires both `FAMILY_FIND_ENV=staging` and `FAMILY_FIND_SHARING_ENABLED=true` to activate sharing endpoints; the initial staging manifest requires sharing disabled. **Do not deploy this Worker to the existing production endpoint.** Environment flags do not prove D1 isolation: confirm the actual staging database UUID in Cloudflare before deploying. Staging schema and cleanup SQL are prepared under `family-find-worker/sql/`, but neither has been executed.
+The Worker now requires both `FAMILY_FIND_ENV=staging` and `FAMILY_FIND_ENABLED=true` to activate sharing endpoints; the initial staging manifest requires sharing disabled. **Do not deploy this Worker to the existing production endpoint.** Environment flags do not prove D1 isolation: confirm the actual staging database UUID in Cloudflare before deploying. Staging schema and cleanup SQL are prepared under `family-find-worker/sql/`. The user supplied Cloudflare screenshots showing staging table and indexes created; this has not been independently verified against live D1, and cleanup execution is not verified.
 
 ## Verification record
 
-- GitHub Actions Run #114: 85 automated tests passed; zero failures (before staging SQL files were added).
+- GitHub Actions run 44828947798: 85 automated tests passed; zero failures. This confirms the corrected `FAMILY_FIND_ENABLED` activation gate, not live Cloudflare behavior.
 - No staging D1 integration or physical Android/iPhone end-to-end test has been verified.
 - No production merge or deployment has been performed as part of this work.
