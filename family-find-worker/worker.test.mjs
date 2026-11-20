@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import worker from './worker.mjs';
-const env={DB:{prepare(){return {first:async()=>({connected:1})}}}};
+const env={FAMILY_FIND_SHARING_ENABLED:'true',DB:{prepare(){return {first:async()=>({connected:1})}}}};
 const request=(path,options={})=>new Request('https://staging.example'+path,options);
 test('health succeeds without exposing locations',async()=>{
  const r=await worker.fetch(request('/health'),env);assert.equal(r.status,200);
@@ -85,4 +85,23 @@ test('GPS update endpoint rejects missing device credential before database acce
 test('consent endpoint rejects false consent before touching database',async()=>{
  const r=await worker.fetch(request('/v1/consent',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:'a'.repeat(64),agreed:false})}),env);
  assert.equal(r.status,400);
+});
+
+test('sharing endpoints fail closed when staging activation is absent',async()=>{
+ const disabled={DB:env.DB};
+ for(const [path,method] of [
+  ['/v1/invitations','POST'],['/v1/consent','POST'],
+  ['/v1/positions','POST'],['/v1/positions/12345678-1234-4123-8123-123456789abc','GET'],
+  ['/v1/shares/12345678-1234-4123-8123-123456789abc/revoke','POST']
+ ]){
+  const r=await worker.fetch(request(path,{method}),disabled);
+  assert.equal(r.status,503,path);
+  assert.match((await r.json()).error,/disabled/);
+ }
+});
+test('sharing endpoints reject activation values other than exact true string',async()=>{
+ for(const value of [undefined,false,true,'TRUE','1','false']){
+  const r=await worker.fetch(request('/v1/invitations',{method:'POST'}),{...env,FAMILY_FIND_SHARING_ENABLED:value});
+  assert.equal(r.status,503,String(value));
+ }
 });
