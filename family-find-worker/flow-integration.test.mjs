@@ -27,14 +27,11 @@ test('full invitation-to-revocation flow with simulated API never accesses GPS b
  };
  const sharing=createSharingSession({api,geolocate:async()=>{events.push('gps');return {latitude:1.3,longitude:103.8,accuracy:10};}});
  assert.deepEqual(events,['invite']);
- const accepted=await recipient.accept(api,true);
- // Session controller is responsible for consent exchange in the actual UI.
- // Here the result is checked before separately initiating its own simulated session.
- assert.equal(accepted.id,'session-1');
+ // The recipient parses and clears the invitation; sharing controller redeems it once.
  await sharing.accept(inviteToken,true);
- assert.deepEqual(events,['invite','consent','consent']);
+ assert.deepEqual(events,['invite','consent']);
  await sharing.sendOnce();
  await sharing.stop();
- assert.deepEqual(events,['invite','consent','consent','gps','position','revoke']);
+ assert.deepEqual(events,['invite','consent','gps','position','revoke']);
  assert.equal(sharing.status().active,false);
 });
