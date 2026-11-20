@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import worker from './worker.mjs';
-const env={FAMILY_FIND_SHARING_ENABLED:'true',DB:{prepare(){return {first:async()=>({connected:1})}}}};
+const env={FAMILY_FIND_ENV:'staging',FAMILY_FIND_SHARING_ENABLED:'true',DB:{prepare(){return {first:async()=>({connected:1})}}}};
 const request=(path,options={})=>new Request('https://staging.example'+path,options);
 test('health succeeds without exposing locations',async()=>{
  const r=await worker.fetch(request('/health'),env);assert.equal(r.status,200);
@@ -102,6 +102,13 @@ test('sharing endpoints fail closed when staging activation is absent',async()=>
 test('sharing endpoints reject activation values other than exact true string',async()=>{
  for(const value of [undefined,false,true,'TRUE','1','false']){
   const r=await worker.fetch(request('/v1/invitations',{method:'POST'}),{...env,FAMILY_FIND_SHARING_ENABLED:value});
+  assert.equal(r.status,503,String(value));
+ }
+});
+
+test('sharing activation is refused outside staging even when enabled',async()=>{
+ for(const value of [undefined,'production','STAGING','']){
+  const r=await worker.fetch(request('/v1/invitations',{method:'POST'}),{...env,FAMILY_FIND_ENV:value});
   assert.equal(r.status,503,String(value));
  }
 });
