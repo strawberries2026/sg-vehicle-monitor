@@ -7,7 +7,7 @@ export async function stagingPreflight({config,fetcher,baseUrl}){
  const base=new URL(baseUrl);
  if(base.protocol!=='https:'||base.username||base.password||base.search||base.hash)
   return {ready:false,errors:['Clean HTTPS staging URL required']};
- if(!/^sg-family-find-staging\./.test(base.hostname))
+ if(!/^sg-family-find-staging\.[a-z0-9-]+\.workers\.dev$/.test(base.hostname))
   return {ready:false,errors:['Expected isolated staging Worker hostname']};
  const errors=[];
  try{
