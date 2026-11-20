@@ -4,7 +4,7 @@ import {updatePosition} from './positions.mjs';
 import {acceptInvitation} from './consent.mjs';
 import {createInvitation} from './invitations.mjs';
 // SG Family Find Worker: staging-only security baseline.
-// No location endpoints are enabled. Deploy only to an isolated staging Worker.
+// Sharing routes are fail-closed unless explicitly enabled in an isolated staging environment.
 const ORIGIN = 'https://strawberries2026.github.io';
 const PROJECT = 'sg-vehicle-monitor-pro';
 const ISSUER = 'https://securetoken.google.com/' + PROJECT;
@@ -56,6 +56,11 @@ export default {
    try{const viewer=await verifyFirebase(match[1]);return response({authenticated:true,uid:viewer.uid},200,origin);}
    catch{return response({error:'Authentication failed'},401,origin);}
   }
+  // Fail closed for all sharing routes; health and Firebase auth diagnostics remain available.
+  // This flag is not a substitute for isolated D1 bindings or explicit deployment approval.
+  if(url.pathname.startsWith('/v1/') && url.pathname!=='/v1/auth-check' &&
+     env?.FAMILY_FIND_SHARING_ENABLED!=='true')
+    return response({error:'Family sharing is disabled'},503,origin);
   if(url.pathname==='/v1/invitations'&&request.method==='POST'){
    const match=/^Bearer (\S+)$/.exec(request.headers.get('Authorization')||'');
    if(!match)return response({error:'Authentication required'},401,origin);
