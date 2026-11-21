@@ -1,0 +1,81 @@
+name: Family Find staging deployment (manual only)
+# SAFETY: never deploy to the existing sg-family-find-api Worker.
+# This workflow is deliberately manual and lives on the feature branch until reviewed.
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_staging_only:
+        description: 'Type DEPLOY-STAGING-ONLY to confirm isolated staging deployment'
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: sg-family-find-staging-deploy
+  cancel-in-progress: false
+jobs:
+  deploy-staging:
+    if: github.ref == 'refs/heads/feature/family-find-secure-api' && inputs.confirm_staging_only == 'DEPLOY-STAGING-ONLY'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: family-find-staging
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.FAMILY_FIND_STAGING_CF_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.FAMILY_FIND_STAGING_CF_ACCOUNT_ID }}
+      STAGING_D1_ID: ${{ vars.FAMILY_FIND_STAGING_D1_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate isolated staging configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo 'Missing staging API token'; exit 1; }
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo 'Missing staging account ID'; exit 1; }
+          [[ "$STAGING_D1_ID" =~ ^[0-9a-fA-F-]{36}$ ]] || { echo 'Missing/invalid staging D1 UUID'; exit 1; }
+          test "${{ github.ref_name }}" = "feature/family-find-secure-api"
+      - name: Run security tests
+        run: node --test family-find-worker/*.test.mjs
+      - name: Bundle complete Worker
+        run: |
+          npx --yes esbuild@0.25.12 family-find-worker/worker.mjs --bundle --format=esm --platform=browser --target=es2022 --outfile=sg-family-find-staging-worker.mjs
+          node --check sg-family-find-staging-worker.mjs
+      - name: Generate staging-only Wrangler config
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import {writeFileSync} from 'node:fs';
+          const cfg={
+            name:'sg-family-find-staging',
+            main:'sg-family-find-staging-worker.mjs',
+            compatibility_date:'2026-11-01',
+            workers_dev:true,
+            d1_databases:[{binding:'DB',database_name:'sg-family-find-staging-db',database_id:process.env.STAGING_D1_ID}],
+            vars:{FAMILY_FIND_ENABLED:'false',FAMILY_FIND_ENV:'staging'}
+          };
+          writeFileSync('wrangler.family-find-staging.json',JSON.stringify(cfg,null,2));
+          NODE
+      - name: Deploy to isolated staging Worker (never production)
+        run: npx --yes wrangler@4 deploy --config wrangler.family-find-staging.json
+      - name: Check health endpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+          url='https://sg-family-find-staging.songkhengleong.workers.dev'
+          curl --fail --silent --show-error --retry 3 --retry-delay 2 "$url/health" -o health.json
+          node --input-type=module <<'NODE'
+          import {readFileSync} from 'node:fs';
+          const data=JSON.parse(readFileSync('health.json','utf8'));
+          if(data.database!=='Connected'||data.service!=='SG Family Find API')throw Error('Staging health verification failed');
+          console.log('Staging D1 health verified');
+          NODE
+          status=$(curl --silent --output disabled.json --write-out '%{http_code}' -X POST "$url/v1/invitations")
+          test "$status" = 503 || { echo 'Fail-closed gate did not return HTTP 503'; exit 1; }
+          node --input-type=module <<'NODE'
+          import {readFileSync} from 'node:fs';
+          const data=JSON.parse(readFileSync('disabled.json','utf8'));
+          if(data.error!=='Family sharing is disabled')throw Error('Fail-closed response mismatch');
+          console.log('Location sharing remains disabled');
+          NODE
