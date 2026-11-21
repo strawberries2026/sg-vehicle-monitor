@@ -28,6 +28,13 @@ jobs:
         run: node --test family-find-worker/*.test.mjs
       - name: Bundle complete staging Worker without deploying
         run: |
-          npx --yes esbuild@0.25.12 family-find-worker/worker.mjs --bundle --format=esm --platform=browser --target=es2022 --outfile=/tmp/sg-family-find-staging-worker.mjs
-          node --check /tmp/sg-family-find-staging-worker.mjs
-          test -s /tmp/sg-family-find-staging-worker.mjs
+          npx --yes esbuild@0.25.12 family-find-worker/worker.mjs --bundle --format=esm --platform=browser --target=es2022 --outfile=sg-family-find-staging-worker.mjs
+          node --check sg-family-find-staging-worker.mjs
+          test -s sg-family-find-staging-worker.mjs
+      - name: Upload staging-only Worker bundle for manual review
+        uses: actions/upload-artifact@v4
+        with:
+          name: sg-family-find-staging-worker
+          path: sg-family-find-staging-worker.mjs
+          if-no-files-found: error
+          retention-days: 7
