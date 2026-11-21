@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer"><meta http-equiv="Cache-Control" content="no-store">
+<title>SG Family Find — staging consent</title>
+<style>body{font:16px system-ui,sans-serif;background:#f3f6fa;color:#172033;margin:0}main{max-width:520px;margin:auto;padding:20px}section{background:#fff;padding:22px;border-radius:16px}h1{font-size:1.55rem}p{line-height:1.55}.notice{background:#fff0cf;padding:12px;border-radius:9px}button{display:block;width:100%;padding:14px;margin:12px 0;border:0;border-radius:9px;font-weight:700;font-size:1rem;background:#1453ad;color:white}button:disabled{opacity:.45}button.secondary{background:#e5eaf0;color:#15263b}label{display:flex;gap:12px;align-items:flex-start}input[type=checkbox]{width:22px;height:22px;flex:none}#status{white-space:pre-wrap;font-weight:600}</style></head>
+<body><main><section><h1>SG Family Find — staging</h1><p class="notice"><strong>Testing only — not a released service.</strong> Sharing is off unless the separate staging API is deliberately activated. This page does not track in the background.</p>
+<p>Someone has requested your current location. Confirm the request with them independently. You can decline, and no location is shared merely by opening this page.</p>
+<p>After consenting, you must separately press <strong>Share my current location</strong>. Each press sends one GPS reading to the authorised viewer. The session expires within one hour. You can stop sharing at any time.</p>
+<label><input id="agree" type="checkbox"><span>I understand the request and voluntarily agree to share one location at a time.</span></label>
+<button id="accept" disabled>Accept invitation</button><button id="decline" class="secondary">Decline</button>
+<div id="controls" hidden><p id="session"></p><button id="send">Share my current location</button><button id="stop" class="secondary">Stop sharing and revoke access</button></div>
+<p id="status" role="status" aria-live="polite"></p>
+<p><small>Closing this tab stops further GPS updates. It does not revoke an already shared reading; use Stop sharing to revoke the session. iPhone Safari does not provide reliable background tracking.</small></p>
+</section></main>
+<script type="module">
+import {createFamilyFindClient,requestOnePosition} from './family-find-worker/client.mjs';
+import {createSharingSession} from './family-find-worker/sharing-session.mjs';
+import {createConsentLinkController} from './family-find-worker/consent-link-controller.mjs';
+const $=id=>document.getElementById(id);
+const api=createFamilyFindClient('https://sg-family-find-staging.songkhengleong.workers.dev/');
+const sharing=createSharingSession({api,geolocate:requestOnePosition});
+const consent=createConsentLinkController({historyObject:history,href:location.href});
+let busy=false;
+function status(message){$('status').textContent=message;}
+function toggle(active){$('accept').disabled=active||!consent.hasInvitation()||!$('agree').checked;$('decline').disabled=active;$('send').disabled=active;$('stop').disabled=active;}
+async function run(action){if(busy)return;busy=true;toggle(true);try{await action();}catch(e){status(e instanceof Error?e.message:'Request failed');}finally{busy=false;toggle(false);}}
+if(!consent.hasInvitation()){status('No valid invitation. Ask the requester to send a fresh link.');$('agree').disabled=true;}
+$('agree').addEventListener('change',()=>toggle(false));
+$('decline').addEventListener('click',()=>{consent.decline();$('agree').checked=false;$('agree').disabled=true;toggle(false);status('Invitation declined. No location was shared.');});
+$('accept').addEventListener('click',()=>run(async()=>{
+ if(!$('agree').checked)return;
+ const session=await consent.beginSharing(sharing,true);
+ $('controls').hidden=false;$('agree').disabled=true;
+ $('session').textContent='Session active until '+new Date(session.expiresAt*1000).toLocaleString();
+ status('Consent recorded. No GPS sent yet. Press Share my current location to request permission.');
+}));
+$('send').addEventListener('click',()=>run(async()=>{await sharing.sendOnce();status('One GPS update sent. No automatic updates are scheduled.');}));
+$('stop').addEventListener('click',()=>run(async()=>{
+ await sharing.stop();$('controls').hidden=true;status('Sharing revoked successfully.');}));
+</script></body></html>
