@@ -1,0 +1,85 @@
+name: Family Find staging launcher (manual, isolated)
+# Default-branch entry point only. Does not merge or deploy the main application.
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: 'Type DEPLOY-STAGING-ONLY'
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: family-find-staging-launch
+  cancel-in-progress: false
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main' && inputs.confirmation == 'DEPLOY-STAGING-ONLY'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: family-find-staging
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.FAMILY_FIND_STAGING_CF_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.FAMILY_FIND_STAGING_CF_ACCOUNT_ID }}
+      STAGING_D1_ID: ${{ vars.FAMILY_FIND_STAGING_D1_ID }}
+    steps:
+      - name: Check out reviewed feature commit only (not main)
+        uses: actions/checkout@v4
+        with:
+          ref: 415b67ad0109ec7652a8ccac04df0326481e44a1
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate staging configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo 'Missing staging token'; exit 1; }
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo 'Missing staging account ID'; exit 1; }
+          [[ "$STAGING_D1_ID" =~ ^[0-9a-fA-F-]{36}$ ]] || { echo 'Invalid staging D1 ID'; exit 1; }
+      - name: Test and bundle reviewed source
+        shell: bash
+        run: |
+          set -euo pipefail
+          for file in family-find-worker/*.mjs; do node --check "$file"; done
+          node --test family-find-worker/*.test.mjs
+          npx --yes esbuild@0.25.12 family-find-worker/worker.mjs --bundle --format=esm --platform=browser --target=es2022 --outfile=sg-family-find-staging-worker.mjs
+          node --check sg-family-find-staging-worker.mjs
+      - name: Build locked staging configuration
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import {writeFileSync} from 'node:fs';
+          const cfg = {
+            name:'sg-family-find-staging',
+            main:'sg-family-find-staging-worker.mjs',
+            compatibility_date:'2026-11-01',
+            workers_dev:true,
+            d1_databases:[{binding:'DB',database_name:'sg-family-find-staging-db',database_id:process.env.STAGING_D1_ID}],
+            vars:{FAMILY_FIND_ENABLED:'false',FAMILY_FIND_ENV:'staging'}
+          };
+          writeFileSync('wrangler.family-find-staging.json',JSON.stringify(cfg,null,2));
+          NODE
+      - name: Deploy only isolated staging Worker
+        run: npx --yes wrangler@4 deploy --config wrangler.family-find-staging.json
+      - name: Verify staging health and fail-closed sharing
+        shell: bash
+        run: |
+          set -euo pipefail
+          url='https://sg-family-find-staging.songkhengleong.workers.dev'
+          curl --fail --silent --show-error --retry 3 --retry-delay 2 "$url/health" -o health.json
+          node --input-type=module <<'NODE'
+          import {readFileSync} from 'node:fs';
+          const d=JSON.parse(readFileSync('health.json','utf8'));
+          if(d.service!=='SG Family Find API'||d.database!=='Connected')throw Error('Staging D1 health failed');
+          console.log('Staging D1 connected');
+          NODE
+          status=$(curl --silent --output disabled.json --write-out '%{http_code}' -X POST "$url/v1/invitations")
+          test "$status" = 503 || { echo 'Sharing was not disabled'; exit 1; }
+          node --input-type=module <<'NODE'
+          import {readFileSync} from 'node:fs';
+          const d=JSON.parse(readFileSync('disabled.json','utf8'));
+          if(d.error!=='Family sharing is disabled')throw Error('Fail-closed response mismatch');
+          console.log('Sharing remains disabled');
+          NODE
