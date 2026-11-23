@@ -26,6 +26,10 @@ jobs:
           find . -maxdepth 1 -type f \( -name '*.html' -o -name '*.js' -o -name '*.css' -o -name '*.json' -o -name '*.webmanifest' -o -name '*.png' -o -name '*.svg' -o -name '*.ico' \) -exec cp '{}' gps-pr11-preview/ \;
           test -s gps-pr11-preview/index.html
           test -s gps-pr11-preview/app.js
+          test -s gps-pr11-preview/dashboard-ux.js
+          test -s gps-pr11-preview/location-sharing.js
+          node --check gps-pr11-preview/dashboard-ux.js
+          echo 'Preview package includes required navigation and location-sharing modules.'
           cat > gps-pr11-preview/PREVIEW-INSTRUCTIONS.txt <<'TXT'
           SG Vehicle Monitor GPS PR #11 isolated preview package
           This is NOT a deployed HTTPS preview. Do not open index.html from Android Downloads
@@ -35,6 +39,9 @@ jobs:
           Verify the preview origin and privacy before granting location permission.
           Test Locate me, Start GPS, Follow map ON/OFF, Stop GPS and Clear journey.
           Family Find is not enabled by this package.
+          IMPORTANT: The preview may reference existing public Firebase/API endpoints.
+          Do not enter credentials or test family sharing until origin isolation is reviewed.
+          Keep the production installed PWA unchanged.
           TXT
       - name: Upload preview ZIP artifact (no deployment)
         uses: actions/upload-artifact@v4
