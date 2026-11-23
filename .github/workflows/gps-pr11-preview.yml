@@ -1,0 +1,45 @@
+name: GPS PR11 isolated preview package
+on:
+  workflow_dispatch:
+  push:
+    branches: [feature/gps-follow-reliability]
+    paths: ['app.js', 'index.html', '.github/workflows/gps-pr11-preview.yml']
+permissions:
+  contents: read
+jobs:
+  package-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check JavaScript syntax
+        run: node --check app.js
+      - name: Prepare isolated preview files
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p gps-pr11-preview
+          # Copy static site files only; never package git metadata, workflow secrets, or API credentials.
+          find . -maxdepth 1 -type f \( -name '*.html' -o -name '*.js' -o -name '*.css' -o -name '*.json' -o -name '*.webmanifest' -o -name '*.png' -o -name '*.svg' -o -name '*.ico' \) -exec cp '{}' gps-pr11-preview/ \;
+          test -s gps-pr11-preview/index.html
+          test -s gps-pr11-preview/app.js
+          cat > gps-pr11-preview/PREVIEW-INSTRUCTIONS.txt <<'TXT'
+          SG Vehicle Monitor GPS PR #11 isolated preview package
+          This is NOT a deployed HTTPS preview. Do not open index.html from Android Downloads
+          to test GPS: browsers require HTTPS (or localhost) for geolocation.
+          Upload this folder to a SEPARATE temporary HTTPS static host such as a new
+          Cloudflare Pages project; do not replace the existing production Pages project.
+          Verify the preview origin and privacy before granting location permission.
+          Test Locate me, Start GPS, Follow map ON/OFF, Stop GPS and Clear journey.
+          Family Find is not enabled by this package.
+          TXT
+      - name: Upload preview ZIP artifact (no deployment)
+        uses: actions/upload-artifact@v4
+        with:
+          name: gps-pr11-preview-files
+          path: gps-pr11-preview/
+          if-no-files-found: error
+          retention-days: 7
