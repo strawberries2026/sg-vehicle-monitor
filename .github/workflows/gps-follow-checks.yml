@@ -1,0 +1,39 @@
+name: GPS follow reliability checks
+on:
+  push:
+    branches: [feature/gps-follow-reliability]
+    paths: ['app.js', '.github/workflows/gps-follow-checks.yml']
+  pull_request:
+    paths: ['app.js', '.github/workflows/gps-follow-checks.yml']
+permissions:
+  contents: read
+jobs:
+  gps-checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: JavaScript syntax
+        run: node --check app.js
+      - name: Check GPS control and privacy invariants
+        run: |
+          node --input-type=module <<'NODE'
+          import {readFileSync} from 'node:fs';
+          import assert from 'node:assert/strict';
+          const source=readFileSync('app.js','utf8');
+          for(const term of [
+            'navigator.geolocation.getCurrentPosition(update,fail',
+            'navigator.geolocation.watchPosition(update,fail',
+            'navigator.geolocation.clearWatch(watchId)',
+            "followMap=true",
+            "if(followMap)map.setView",
+            "followButton.setAttribute('aria-pressed'",
+            "sec>120",
+            "line.setLatLngs(points)"
+          ])assert.ok(source.includes(term),'Missing GPS invariant: '+term);
+          assert.ok(!source.includes('fetch('+'location'), 'Review location upload changes');
+          console.log('GPS static invariants passed (not a browser runtime test)');
+          NODE
