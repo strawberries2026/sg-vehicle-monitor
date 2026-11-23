@@ -26,7 +26,26 @@
   const details = target.querySelector(':scope > details');
   if (details) details.open = true;
   const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-  target.scrollIntoView({behavior: reduced ? 'auto' : 'smooth', block: 'start'});
+  target.scrollIntoView({behavior: id === 'map' ? 'auto' : (reduced ? 'auto' : 'smooth'), block: 'start'});
+  if (id === 'map') {
+   // Leaflet may initialize before the viewport settles; recalculate after navigation.
+   requestAnimationFrame(() => {
+    try {
+     const mapNode = $('map');
+     if (!mapNode) return;
+     if (!window.L) {
+      mapNode.textContent = 'Map library unavailable. Check your internet connection and reload.';
+      return;
+     }
+     // app.js owns the Leaflet instance; dispatch a passive resize signal.
+     window.dispatchEvent(new Event('resize'));
+     if (!mapNode.querySelector('.leaflet-container') && !mapNode.classList.contains('leaflet-container')) {
+      mapNode.setAttribute('role', 'status');
+      mapNode.textContent = 'Map could not initialize. Reload the page and check the connection.';
+     }
+    } catch (error) { console.warn('Map navigation check:', error); }
+   });
+  }
   if (focus) {
    const heading = details?.querySelector('summary') || target;
    if (!heading.hasAttribute('tabindex')) heading.setAttribute('tabindex', '-1');
