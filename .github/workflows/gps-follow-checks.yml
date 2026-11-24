@@ -45,6 +45,28 @@ jobs:
           find . -maxdepth 1 -type f \( -name '*.html' -o -name '*.js' -o -name '*.css' -o -name '*.json' -o -name '*.webmanifest' -o -name '*.png' -o -name '*.svg' -o -name '*.ico' \) -exec cp '{}' gps-pr11-preview/ \;
           for file in index.html app.js dashboard-ux.js location-sharing.js; do test -s "gps-pr11-preview/$file"; done
           node --check gps-pr11-preview/dashboard-ux.js
+          mkdir -p gps-pr11-preview/data
+          test -s data/hospitals.json
+          cp data/*.json gps-pr11-preview/data/
+          # Replace backend modules only in the generated preview, never in source.
+          for file in firebase-init.js location-sharing.js; do
+            cat > "gps-pr11-preview/$file" <<'JS'
+          window.sgVehicleFirebase = {connected:false, sharingEnabled:false};
+          for (const id of ['google-login','google-logout','session-check']) {
+            const button=document.getElementById(id); if(button) button.disabled=true;
+          }
+          for (const id of ['auth-status','sharing-status','session-health']) {
+            const node=document.getElementById(id); if(node) node.textContent='Disabled in isolated GPS preview.';
+          }
+          JS
+          done
+          rm -f gps-pr11-preview/firebase.json
+          cat > gps-pr11-preview/_headers <<'HEADERS'
+          /*
+            Content-Security-Policy: connect-src 'self' https://api.data.gov.sg https://*.tile.openstreetmap.org; form-action 'none'; object-src 'none'
+          HEADERS
+          test -s gps-pr11-preview/data/hospitals.json
+          ! grep -E 'firebaseapp.com|initializeApp|signInWithPopup' gps-pr11-preview/firebase-init.js gps-pr11-preview/location-sharing.js
           printf '%s\n' 'GPS PR11 TEST PACKAGE — not deployed.' 'Use a separate HTTPS staging origin for GPS.' 'Do not test Family Find or enter credentials in this preview.' 'Production remains unchanged.' > gps-pr11-preview/PREVIEW-INSTRUCTIONS.txt
       - name: Upload Android preview artifact
         uses: actions/upload-artifact@v4
