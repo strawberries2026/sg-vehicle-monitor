@@ -32,7 +32,12 @@ jobs:
             "if(followMap)map.setView",
             "followButton.setAttribute('aria-pressed'",
             "sec>120",
-            "line.setLatLngs(points)"
+            "line.setLatLngs(segments)",
+            "accuracy>100",
+            "segments.push([])",
+            "Location recovered",
+            "Date.now()-at>120000",
+            "Last known position retained"
           ])assert.ok(source.includes(term),'Missing GPS invariant: '+term);
           assert.ok(!source.includes('fetch('+'location'), 'Review location upload changes');
           console.log('GPS static invariants passed (not a browser runtime test)');
