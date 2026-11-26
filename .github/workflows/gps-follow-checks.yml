@@ -66,6 +66,15 @@ jobs:
           JS
           done
           rm -f gps-pr11-preview/firebase.json
+          for file in hospitals incidents speed-bands; do test -s "gps-pr11-preview/data/$file.json"; done
+          node --input-type=module <<'NODE'
+          import {readFileSync,writeFileSync} from 'node:fs';
+          const path='gps-pr11-preview/index.html';
+          const sha=process.env.GITHUB_SHA.slice(0,12);
+          const html=readFileSync(path,'utf8');
+          if(!html.includes('</body>')) throw Error('Missing body');
+          writeFileSync(path,html.replace('</body>','<div style="position:fixed;top:0;right:0;z-index:9999;background:#172554;color:white;font-size:11px;padding:3px 6px">GPS preview '+sha+'</div></body>'));
+          NODE
           cat > gps-pr11-preview/_headers <<'HEADERS'
           /*
             Content-Security-Policy: connect-src 'self' https://api.data.gov.sg https://*.tile.openstreetmap.org; form-action 'none'; object-src 'none'
