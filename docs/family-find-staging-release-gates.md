@@ -1,0 +1,32 @@
+# Family Find staging deployment gate
+
+**Status: draft.** Phase 1D adds local Cloudflare Workers and D1 integration tests using Miniflare, synthetic identities and an in-memory database. Hosted staging D1 and phone checks remain separate release gates.
+
+## Isolated staging prerequisites
+
+1. Create a separate Cloudflare Worker named `sg-family-find-staging` and a separate D1 database named `sg-family-find-staging-db`. Do not bind the existing production `sg-family-find-db`.
+2. Apply the `family_shares` schema in staging only, using the existing D1 table definition. Verify that all columns, indexes and constraints match the Worker queries.
+3. Restrict the Worker to the exact intended GitHub Pages origin. The existing Worker source currently allows `https://strawberries2026.github.io`; never use a wildcard origin.
+4. Configure the Firebase project ID used by the staging Worker and verify cryptographic ID-token validation. Do not put Firebase ID tokens or invitation/device capabilities in logs, query strings or analytics.
+5. Host the staging UI separately from the production entry page. Explicitly label it staging and require consent before any GPS request.
+6. Check CORS preflight, unauthenticated denial, invalid/expired invitation denial, single redemption, authenticated viewer-only reads, position upload throttling, expiry, revocation and post-revocation denial against **real D1**.
+7. Confirm consented iPhone Safari foreground sharing, Android viewer sign-in, stop sharing, browser-close behavior and stale-location warnings. Background GPS is not guaranteed on iOS.
+8. Establish cleanup for expired location rows and a tested incident/rollback process before inviting real participants.
+9. Keep PR #3 as draft and production unchanged until these gates are independently verified and release is explicitly approved.
+
+## Important release blocker
+
+The Worker now requires both `FAMILY_FIND_ENV=staging` and `FAMILY_FIND_ENABLED=true` to activate sharing endpoints; the initial staging manifest requires sharing disabled. **Do not deploy this Worker to the existing production endpoint.** Environment flags do not prove D1 isolation: confirm the actual staging database UUID in Cloudflare before deploying. Staging schema and cleanup SQL are prepared under `family-find-worker/sql/`. The user supplied Cloudflare screenshots showing staging table and indexes created; this has not been independently verified against live D1, and cleanup execution is not verified.
+
+## Verification record
+
+- Run `npm ci --prefix family-find-worker --ignore-scripts` and `npm run --prefix family-find-worker test:d1` with Node.js 22 or newer. The local runtime uses compatibility date 2026-08-06.
+- GitHub Actions run 44828947798: 85 automated tests passed; zero failures. This confirms the corrected `FAMILY_FIND_ENABLED` activation gate, not live Cloudflare behavior.
+- No staging D1 integration or physical Android/iPhone end-to-end test has been verified.
+- No production merge or deployment has been performed as part of this work.
+
+## Scheduled staging cleanup
+
+The manual staging deployment workflow leaves cleanup off by default. Its separate cleanup option configures a 15-minute trigger while retaining `FAMILY_FIND_ENABLED=false`. Verify the staging D1 binding before authorizing that workflow.
+
+The scheduled handler requires the staging environment, the cleanup flag and the matching trigger. An atomic D1 batch clears stored coordinates, location timestamps and device credentials from up to 250 newly expired shares per run. It also deletes up to 250 terminal records at least 24 hours past expiry or revocation. Repeated sweeps drain any backlog. Read and write routes enforce expiry immediately.
