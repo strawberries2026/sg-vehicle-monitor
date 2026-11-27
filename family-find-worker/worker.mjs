@@ -3,6 +3,7 @@ import {readViewerPosition} from './viewer.mjs';
 import {updatePosition} from './positions.mjs';
 import {acceptInvitation} from './consent.mjs';
 import {createInvitation} from './invitations.mjs';
+import {CLEANUP_CRON, cleanupExpiredShares} from './cleanup.mjs';
 // SG Family Find Worker: staging-only security baseline.
 // Sharing routes are fail-closed unless explicitly enabled in an isolated staging environment.
 const ORIGIN = 'https://strawberries2026.github.io';
@@ -41,6 +42,12 @@ async function verifyFirebase(token, fetcher=fetch) {
 }
 export {verifyFirebase};
 export default {
+ async scheduled(controller, env) {
+  if (env.FAMILY_FIND_ENV !== 'staging' ||
+      env.FAMILY_FIND_CLEANUP_ENABLED !== 'true' ||
+      controller.cron !== CLEANUP_CRON) return;
+  await cleanupExpiredShares(env.DB, Math.floor(controller.scheduledTime / 1000));
+ },
  async fetch(request,env){
   const url=new URL(request.url),origin=request.headers.get('Origin');
   if(origin&&origin!==ORIGIN)return response({error:'Origin not allowed'},403);

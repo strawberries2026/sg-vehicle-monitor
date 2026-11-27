@@ -26,6 +26,11 @@ jobs:
           for file in family-find-worker/*.mjs; do node --check "$file"; done
       - name: Run API security smoke tests
         run: node --test family-find-worker/*.test.mjs
+      - name: Run isolated D1 integration tests
+        working-directory: family-find-worker
+        run: |
+          npm ci --ignore-scripts
+          npm run test:d1
       - name: Bundle complete staging Worker without deploying
         run: |
           npx --yes esbuild@0.25.12 family-find-worker/worker.mjs --bundle --format=esm --platform=browser --target=es2022 --outfile=sg-family-find-staging-worker.mjs

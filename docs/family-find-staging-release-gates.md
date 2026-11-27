@@ -1,6 +1,6 @@
 # Family Find staging deployment gate
 
-**Status: not approved for production.** The GitHub test suite uses simulated database and browser dependencies. A passing run does not prove Cloudflare D1 integration or real-device behavior.
+**Status: draft.** Phase 1D adds local Cloudflare Workers and D1 integration tests using Miniflare, synthetic identities and an in-memory database. Hosted staging D1 and phone checks remain separate release gates.
 
 ## Isolated staging prerequisites
 
@@ -20,6 +20,13 @@ The Worker now requires both `FAMILY_FIND_ENV=staging` and `FAMILY_FIND_ENABLED=
 
 ## Verification record
 
+- Run `npm ci --prefix family-find-worker --ignore-scripts` and `npm run --prefix family-find-worker test:d1` with Node.js 22 or newer. The local runtime uses compatibility date 2026-08-06.
 - GitHub Actions run 44828947798: 85 automated tests passed; zero failures. This confirms the corrected `FAMILY_FIND_ENABLED` activation gate, not live Cloudflare behavior.
 - No staging D1 integration or physical Android/iPhone end-to-end test has been verified.
 - No production merge or deployment has been performed as part of this work.
+
+## Scheduled staging cleanup
+
+The manual staging deployment workflow leaves cleanup off by default. Its separate cleanup option configures a 15-minute trigger while retaining `FAMILY_FIND_ENABLED=false`. Verify the staging D1 binding before authorizing that workflow.
+
+The scheduled handler requires the staging environment, the cleanup flag and the matching trigger. An atomic D1 batch clears stored coordinates, location timestamps and device credentials from up to 250 newly expired shares per run. It also deletes up to 250 terminal records at least 24 hours past expiry or revocation. Repeated sweeps drain any backlog. Read and write routes enforce expiry immediately.

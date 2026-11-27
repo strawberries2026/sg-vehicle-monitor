@@ -1,13 +1,21 @@
+import {CLEANUP_CRON} from './cleanup.mjs';
+
 // Validate a staging deployment manifest before invoking Cloudflare tooling.
 // This is a guardrail, not proof that the UUID actually belongs to the staging D1.
 export function validateStagingConfig(config){
  const errors=[];
  if(!config||typeof config!=='object')return {ok:false,errors:['Configuration required']};
  if(config.name!=='sg-family-find-staging')errors.push('Staging Worker name required');
- if(config.main!=='family-find-worker/worker.mjs')errors.push('Unexpected Worker entrypoint');
+ if(!['family-find-worker/worker.mjs','sg-family-find-staging-worker.mjs'].includes(config.main))
+  errors.push('Unexpected Worker entrypoint');
  if(config.vars?.FAMILY_FIND_ENV!=='staging')errors.push('Explicit staging environment required');
- if(config.vars?.FAMILY_FIND_SHARING_ENABLED!=='false')
+ if(config.vars?.FAMILY_FIND_ENABLED!=='false')
   errors.push('Sharing must remain disabled for initial staging deployment');
+ const cleanup=config.vars?.FAMILY_FIND_CLEANUP_ENABLED;
+ const crons=config.triggers?.crons??[];
+ if(![undefined,'false','true'].includes(cleanup)||!Array.isArray(crons)||
+    (cleanup==='true'?(crons.length!==1||crons[0]!==CLEANUP_CRON):crons.length!==0))
+  errors.push('Cleanup schedule must match the explicit staging cleanup setting');
  const bindings=config.d1_databases;
  if(!Array.isArray(bindings)||bindings.length!==1)errors.push('Exactly one staging D1 binding required');
  else{

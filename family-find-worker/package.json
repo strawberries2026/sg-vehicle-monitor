@@ -1,0 +1,14 @@
+{
+  "name": "family-find-worker-tests",
+  "private": true,
+  "scripts": {
+    "test:d1": "node --test d1-lifecycle.integration.mjs"
+  },
+  "devDependencies": {
+    "miniflare": "4.20260730.0"
+  },
+  "overrides": {
+    "sharp": "0.35.5",
+    "undici": "7.30.2"
+  }
+}

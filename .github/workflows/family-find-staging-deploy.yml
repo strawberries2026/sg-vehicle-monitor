@@ -8,6 +8,10 @@ on:
         description: 'Type DEPLOY-STAGING-ONLY to confirm isolated staging deployment'
         required: true
         type: string
+      enable_staging_cleanup:
+        description: 'Enable scheduled cleanup of expired records in isolated staging D1'
+        type: boolean
+        default: false
 permissions:
   contents: read
 concurrency:
@@ -44,17 +48,29 @@ jobs:
           node --check sg-family-find-staging-worker.mjs
       - name: Generate staging-only Wrangler config
         shell: bash
+        env:
+          ENABLE_STAGING_CLEANUP: ${{ inputs.enable_staging_cleanup }}
         run: |
           node --input-type=module <<'NODE'
           import {writeFileSync} from 'node:fs';
+          import {CLEANUP_CRON} from './family-find-worker/cleanup.mjs';
+          import {validateStagingConfig} from './family-find-worker/staging-config.mjs';
+          const cleanupEnabled=process.env.ENABLE_STAGING_CLEANUP==='true';
           const cfg={
             name:'sg-family-find-staging',
             main:'sg-family-find-staging-worker.mjs',
             compatibility_date:'2026-11-01',
             workers_dev:true,
             d1_databases:[{binding:'DB',database_name:'sg-family-find-staging-db',database_id:process.env.STAGING_D1_ID}],
-            vars:{FAMILY_FIND_ENABLED:'false',FAMILY_FIND_ENV:'staging'}
+            vars:{
+              FAMILY_FIND_ENABLED:'false',
+              FAMILY_FIND_ENV:'staging',
+              FAMILY_FIND_CLEANUP_ENABLED:String(cleanupEnabled)
+            },
+            triggers:{crons:cleanupEnabled?[CLEANUP_CRON]:[]}
           };
+          const validation=validateStagingConfig(cfg);
+          if(!validation.ok)throw new Error(validation.errors.join(', '));
           writeFileSync('wrangler.family-find-staging.json',JSON.stringify(cfg,null,2));
           NODE
       - name: Deploy to isolated staging Worker (never production)

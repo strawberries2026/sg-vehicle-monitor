@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {stagingPreflight} from './staging-preflight.mjs';
-const config={name:'sg-family-find-staging',main:'family-find-worker/worker.mjs',vars:{FAMILY_FIND_ENV:'staging',FAMILY_FIND_SHARING_ENABLED:'false'},d1_databases:[{binding:'DB',database_name:'sg-family-find-staging-db',database_id:'12345678-1234-4123-8123-123456789abc'}]};
+const config={name:'sg-family-find-staging',main:'family-find-worker/worker.mjs',vars:{FAMILY_FIND_ENV:'staging',FAMILY_FIND_ENABLED:'false'},d1_databases:[{binding:'DB',database_name:'sg-family-find-staging-db',database_id:'12345678-1234-4123-8123-123456789abc'}]};
 const baseUrl='https://sg-family-find-staging.test-account.workers.dev/';
 test('preflight passes only connected health and disabled sharing',async()=>{
  const calls=[];
