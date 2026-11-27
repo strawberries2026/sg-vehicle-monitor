@@ -22,7 +22,7 @@ compatibility_date = "2026-11-20"
 
 [vars]
 FAMILY_FIND_ENV = "staging"
-FAMILY_FIND_SHARING_ENABLED = "false"
+FAMILY_FIND_ENABLED = "false"
 
 [[d1_databases]]
 binding = "DB"
@@ -30,7 +30,7 @@ database_name = "sg-family-find-staging-db"
 database_id = "REPLACE_WITH_STAGING_D1_DATABASE_UUID"
 ```
 
-Do not change `FAMILY_FIND_ENV = "staging"` or set `FAMILY_FIND_SHARING_ENABLED = "true"` until isolated D1 migrations, authentication, consent and revocation checks pass. When true, all implemented sharing endpoints become reachable; this is an explicit activation gate, not a read-only test mode.
+Do not change `FAMILY_FIND_ENV = "staging"` or set `FAMILY_FIND_ENABLED = "true"` until isolated D1 migrations, authentication, consent and revocation checks pass. When true, all implemented sharing endpoints become reachable; this is an explicit activation gate, not a read-only test mode.
 
 ## Before any staging deployment
 
